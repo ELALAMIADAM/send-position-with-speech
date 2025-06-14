@@ -1,138 +1,208 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:fillViewport="true"
+    android:background="@color/background_light"
     tools:context=".MainActivity">
 
-    <TextView
-        android:id="@+id/tvLocationStatus"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Location: Not available"
-        android:textSize="16sp"
-        android:textColor="@color/text_gray"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp" />
+        android:orientation="vertical"
+        android:paddingTop="24dp"
+        android:paddingBottom="24dp">
 
-    <TextView
-        android:id="@+id/tvLocationDetails"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="14sp"
-        android:gravity="center"
-        android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/tvLocationStatus"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <!-- App Title -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="32dp">
 
-    <Button
-        android:id="@+id/btnGetLocation"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Get My Location"
-        android:textSize="16sp"
-        android:padding="12dp"
-        app:layout_constraintTop_toBottomOf="@id/tvLocationDetails"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp" />
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_location"
+                android:layout_marginEnd="12dp" />
 
-    <Button
-        android:id="@+id/btnSendSMS"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Send Location via SMS"
-        android:textSize="16sp"
-        android:padding="12dp"
-        android:enabled="false"
-        app:layout_constraintTop_toBottomOf="@id/btnGetLocation"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Emergency Location Sender"
+                style="@style/TitleText" />
 
-    <!-- Emergency Volume Button Section -->
-    <TextView
-        android:id="@+id/tvEmergencyTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Emergency Volume Button Detection"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:textColor="@color/text_dark"
-        app:layout_constraintTop_toBottomOf="@id/btnSendSMS"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp" />
+        </LinearLayout>
 
-    <TextView
-        android:id="@+id/tvEmergencyStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Emergency Detection: OFF"
-        android:textSize="14sp"
-        android:textColor="@color/text_gray"
-        app:layout_constraintTop_toBottomOf="@id/tvEmergencyTitle"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp" />
+        <!-- Location Card -->
+        <LinearLayout
+            style="@style/CardStyle"
+            android:orientation="vertical">
 
-    <Button
-        android:id="@+id/btnToggleEmergency"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Enable Emergency Mode"
-        android:textSize="16sp"
-        android:padding="12dp"
-        android:backgroundTint="@color/emergency_green"
-        app:layout_constraintTop_toBottomOf="@id/tvEmergencyStatus"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
 
-    <TextView
-        android:id="@+id/tvEmergencyInstructions"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="When enabled, quickly press Volume Down + Volume Up buttons 3 times to send emergency location"
-        android:textSize="12sp"
-        android:gravity="center"
-        android:textColor="@color/text_light"
-        app:layout_constraintTop_toBottomOf="@id/btnToggleEmergency"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_location"
+                    android:layout_marginEnd="8dp" />
 
-    <TextView
-        android:id="@+id/tvVolumeResult"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="14sp"
-        android:gravity="center"
-        android:textColor="@color/text_dark"
-        app:layout_constraintTop_toBottomOf="@id/tvEmergencyInstructions"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Location Services"
+                    style="@style/SectionTitleText" />
 
-    <EditText
-        android:id="@+id/etPhoneNumber"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:hint="Enter phone number (e.g., +1234567890)"
-        android:inputType="phone"
-        android:textSize="16sp"
-        android:padding="12dp"
-        app:layout_constraintTop_toBottomOf="@id/tvVolumeResult"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp" />
+            </LinearLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+            <TextView
+                android:id="@+id/tvLocationStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Location: Not available"
+                style="@style/StatusText"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvLocationDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                style="@style/BodyText"
+                android:layout_marginBottom="16dp" />
+
+            <Button
+                android:id="@+id/btnGetLocation"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="🗺️ Get Current Location"
+                android:layout_marginHorizontal="0dp"
+                style="@style/PrimaryButton" />
+
+        </LinearLayout>
+
+        <!-- SMS Section Card -->
+        <LinearLayout
+            style="@style/CardStyle"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_sms"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Send Location via SMS"
+                    style="@style/SectionTitleText" />
+
+            </LinearLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/InputField"
+                android:layout_marginHorizontal="0dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etPhoneNumber"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Enter phone number "
+                    android:inputType="phone"
+                    android:textColor="@color/black" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Button
+                android:id="@+id/btnSendSMS"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="📱 Send Location SMS"
+                android:layout_marginHorizontal="0dp"
+                android:enabled="false"
+                style="@style/SuccessButton" />
+
+        </LinearLayout>
+
+        <!-- SMS Auto-Response Card -->
+        <LinearLayout
+            style="@style/CardStyle"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_sms"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="SMS Auto-Response"
+                    style="@style/SectionTitleText" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Automatically send your location when someone texts you phrases like 'give me your location', 'where are you', etc."
+                style="@style/BodyText"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:id="@+id/tvAutoResponseStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SMS Auto-Response: OFF"
+                style="@style/StatusText"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvAutoResponseInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                style="@style/BodyText"
+                android:layout_marginBottom="16dp" />
+
+            <Button
+                android:id="@+id/btnToggleAutoResponse"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="💬 Enable SMS Auto-Response"
+                android:layout_marginHorizontal="0dp"
+                style="@style/SuccessButton" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

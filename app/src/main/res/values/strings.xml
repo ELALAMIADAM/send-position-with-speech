@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Location SMS Sender</string>
+    <string name="accessibility_service_description">Emergency location sender - detects volume up + power button combination to send emergency location when screen is off</string>
 </resources>

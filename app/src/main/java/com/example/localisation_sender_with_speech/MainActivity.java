@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
@@ -15,6 +16,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.app.AlertDialog;
+import android.text.TextUtils;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -32,14 +35,14 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 1001;
+    private static final int SMS_PERMISSION_REQUEST_CODE = 1003;
     private static final String DEFAULT_PHONE_NUMBER = "+33780542575"; // Change this to your default number
-    private static final int EMERGENCY_SEQUENCE_REQUIRED = 3; // Number of volume button presses needed
-    private static final long EMERGENCY_TIMEOUT_MS = 3000; // 3 seconds timeout for the sequence
 
     private FusedLocationProviderClient fusedLocationClient;
     private TextView tvLocationStatus;
@@ -48,17 +51,11 @@ public class MainActivity extends AppCompatActivity {
     private Button btnSendSMS;
     private EditText etPhoneNumber;
     
-    // Emergency Volume Button Detection components
-    private TextView tvEmergencyStatus;
-    private TextView tvVolumeResult;
-    private Button btnToggleEmergency;
-    private boolean emergencyModeEnabled = false;
-    
-    // Volume button sequence tracking
-    private int volumeSequenceCount = 0;
-    private long lastVolumeButtonTime = 0;
-    private Handler emergencyHandler = new Handler();
-    private Runnable emergencyTimeoutRunnable;
+    // SMS Auto-Response components
+    private TextView tvAutoResponseStatus;
+    private TextView tvAutoResponseInfo;
+    private Button btnToggleAutoResponse;
+    private boolean autoResponseEnabled = false;
 
     private double currentLatitude = 0;
     private double currentLongitude = 0;
@@ -83,6 +80,9 @@ public class MainActivity extends AppCompatActivity {
         // Set default phone number
         etPhoneNumber.setText(DEFAULT_PHONE_NUMBER);
         
+        // Initialize auto-response status
+        initializeAutoResponseStatus();
+        
         // Auto-get location on startup
         getCurrentLocation();
     }
@@ -94,10 +94,10 @@ public class MainActivity extends AppCompatActivity {
         btnSendSMS = findViewById(R.id.btnSendSMS);
         etPhoneNumber = findViewById(R.id.etPhoneNumber);
         
-        // Emergency volume button views
-        tvEmergencyStatus = findViewById(R.id.tvEmergencyStatus);
-        tvVolumeResult = findViewById(R.id.tvVolumeResult);
-        btnToggleEmergency = findViewById(R.id.btnToggleEmergency);
+        // SMS Auto-Response views
+        tvAutoResponseStatus = findViewById(R.id.tvAutoResponseStatus);
+        tvAutoResponseInfo = findViewById(R.id.tvAutoResponseInfo);
+        btnToggleAutoResponse = findViewById(R.id.btnToggleAutoResponse);
     }
 
     private void initializeLocationClient() {
@@ -107,205 +107,94 @@ public class MainActivity extends AppCompatActivity {
     private void setupClickListeners() {
         btnGetLocation.setOnClickListener(v -> getCurrentLocation());
         btnSendSMS.setOnClickListener(v -> sendLocationSMS());
-        btnToggleEmergency.setOnClickListener(v -> toggleEmergencyMode());
+        btnToggleAutoResponse.setOnClickListener(v -> toggleAutoResponseMode());
     }
 
-    private void toggleEmergencyMode() {
-        emergencyModeEnabled = !emergencyModeEnabled;
+    private void initializeAutoResponseStatus() {
+        autoResponseEnabled = SmsAutoResponseReceiver.isAutoResponseEnabled(this);
         
-        if (emergencyModeEnabled) {
-            btnToggleEmergency.setText("Disable Emergency Mode");
-            btnToggleEmergency.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_red_dark));
-            tvEmergencyStatus.setText("Emergency Detection: ON");
-            tvVolumeResult.setText("Emergency mode activated! Press Volume Down + Volume Up 3 times quickly for emergency.");
-            tvVolumeResult.setTextColor(getColor(android.R.color.holo_green_dark));
-            
-            Toast.makeText(this, "Emergency mode enabled! Use volume buttons to send emergency location.", Toast.LENGTH_LONG).show();
-        } else {
-            btnToggleEmergency.setText("Enable Emergency Mode");
-            btnToggleEmergency.setBackgroundTintList(ContextCompat.getColorStateList(this, android.R.color.holo_green_dark));
-            tvEmergencyStatus.setText("Emergency Detection: OFF");
-            tvVolumeResult.setText("");
-            
-            // Reset sequence counter
-            resetEmergencySequence();
-            
-            Toast.makeText(this, "Emergency mode disabled.", Toast.LENGTH_SHORT).show();
+        // If auto-response was enabled before, restart the service
+        if (autoResponseEnabled) {
+            Intent serviceIntent = new Intent(this, SmsAutoResponseService.class);
+            serviceIntent.setAction("START_AUTO_RESPONSE");
+            startForegroundService(serviceIntent);
         }
+        
+        updateAutoResponseUI();
     }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (emergencyModeEnabled && (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)) {
-            handleVolumeButtonPress(keyCode);
-            return true; // Consume the event to prevent volume change
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (emergencyModeEnabled && (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)) {
-            return true; // Consume the event to prevent volume change
-        }
-        return super.onKeyUp(keyCode, event);
-    }
-
-    private void handleVolumeButtonPress(int keyCode) {
-        long currentTime = System.currentTimeMillis();
-        
-        // Check if this press is within the timeout window
-        if (currentTime - lastVolumeButtonTime > EMERGENCY_TIMEOUT_MS) {
-            // Reset sequence if too much time has passed
-            resetEmergencySequence();
-        }
-        
-        lastVolumeButtonTime = currentTime;
-        volumeSequenceCount++;
-        
-        String buttonName = (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) ? "Volume Down" : "Volume Up";
-        tvVolumeResult.setText(String.format(Locale.US, 
-            "🚨 %s pressed! (%d/%d)", buttonName, volumeSequenceCount, EMERGENCY_SEQUENCE_REQUIRED));
-        tvVolumeResult.setTextColor(getColor(android.R.color.holo_orange_dark));
-        
-        // Cancel previous timeout and set a new one
-        if (emergencyTimeoutRunnable != null) {
-            emergencyHandler.removeCallbacks(emergencyTimeoutRunnable);
-        }
-        
-        emergencyTimeoutRunnable = () -> {
-            if (volumeSequenceCount < EMERGENCY_SEQUENCE_REQUIRED) {
-                tvVolumeResult.setText("Emergency sequence timed out. Try again.");
-                tvVolumeResult.setTextColor(getColor(android.R.color.darker_gray));
-                resetEmergencySequence();
-            }
-        };
-        emergencyHandler.postDelayed(emergencyTimeoutRunnable, EMERGENCY_TIMEOUT_MS);
-        
-        // Check if emergency sequence is complete
-        if (volumeSequenceCount >= EMERGENCY_SEQUENCE_REQUIRED) {
-            triggerEmergency();
-        }
-    }
-
-    private void resetEmergencySequence() {
-        volumeSequenceCount = 0;
-        lastVolumeButtonTime = 0;
-        if (emergencyTimeoutRunnable != null) {
-            emergencyHandler.removeCallbacks(emergencyTimeoutRunnable);
-            emergencyTimeoutRunnable = null;
-        }
-    }
-
-    private void triggerEmergency() {
-        resetEmergencySequence();
-        
-        tvVolumeResult.setText("🚨 EMERGENCY TRIGGERED! Sending location...");
-        tvVolumeResult.setTextColor(getColor(android.R.color.holo_red_dark));
-        
-        Toast.makeText(this, "🚨 EMERGENCY DETECTED! Sending location automatically...", Toast.LENGTH_LONG).show();
-        
-        // Vibrate if available
-        android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        if (vibrator != null && vibrator.hasVibrator()) {
-            vibrator.vibrate(1000); // Vibrate for 1 second
-        }
-        
-        // Send emergency location SMS
-        sendEmergencyLocationSMS();
-    }
-
-    private void sendEmergencyLocationSMS() {
-        if (!locationAvailable) {
-            Toast.makeText(this, "Getting location for emergency...", Toast.LENGTH_SHORT).show();
-            getLocationForEmergency();
-        } else {
-            String phoneNumber = etPhoneNumber.getText().toString().trim();
-            if (phoneNumber.isEmpty()) {
-                phoneNumber = DEFAULT_PHONE_NUMBER;
-            }
-            
-            if (checkSMSPermission()) {
-                sendEmergencySMS(phoneNumber);
+    
+    private void toggleAutoResponseMode() {
+        if (!autoResponseEnabled) {
+            // Check SMS permissions before enabling
+            if (checkSmsReceivePermissions()) {
+                enableAutoResponse();
             } else {
-                requestSMSPermission();
+                requestSmsReceivePermissions();
             }
+        } else {
+            disableAutoResponse();
         }
     }
-
-    private void getLocationForEmergency() {
-        if (!checkLocationPermissions()) {
-            Toast.makeText(this, "Location permission needed for emergency!", Toast.LENGTH_LONG).show();
-            return;
-        }
+    
+    private void enableAutoResponse() {
+        autoResponseEnabled = true;
+        SmsAutoResponseReceiver.setAutoResponseEnabled(this, true);
         
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                        != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(this, location -> {
-                    if (location != null) {
-                        updateLocationUI(location);
-                        sendEmergencyLocationSMS();
-                    } else {
-                        requestFreshLocationForEmergency();
-                    }
-                });
+        // Start a foreground service to help keep the receiver active
+        Intent serviceIntent = new Intent(this, SmsAutoResponseService.class);
+        serviceIntent.setAction("START_AUTO_RESPONSE");
+        startForegroundService(serviceIntent);
+        
+        updateAutoResponseUI();
+        Toast.makeText(this, "SMS Auto-Response enabled! I will automatically respond with location when someone asks.", Toast.LENGTH_LONG).show();
     }
-
-    private void requestFreshLocationForEmergency() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                        != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-
-        LocationRequest locationRequest = LocationRequest.create()
-                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-                .setInterval(5000)
-                .setFastestInterval(2000)
-                .setNumUpdates(1);
-
-        LocationCallback locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                if (locationResult != null && !locationResult.getLocations().isEmpty()) {
-                    Location location = locationResult.getLastLocation();
-                    updateLocationUI(location);
-                    sendEmergencyLocationSMS();
-                } else {
-                    Toast.makeText(MainActivity.this, "Unable to get location for emergency", Toast.LENGTH_LONG).show();
-                }
-            }
-        };
-
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
+    
+    private void disableAutoResponse() {
+        autoResponseEnabled = false;
+        SmsAutoResponseReceiver.setAutoResponseEnabled(this, false);
+        
+        // Stop the background service
+        Intent serviceIntent = new Intent(this, SmsAutoResponseService.class);
+        stopService(serviceIntent);
+        
+        updateAutoResponseUI();
+        Toast.makeText(this, "SMS Auto-Response disabled.", Toast.LENGTH_SHORT).show();
     }
-
-    private void sendEmergencySMS(String phoneNumber) {
-        try {
-            SmsManager smsManager = SmsManager.getDefault();
-
-            String message = String.format(Locale.US,
-                    "🚨 EMERGENCY ALERT 🚨\nI need help! My location:\nLatitude: %.6f\nLongitude: %.6f\n\nGoogle Maps: https://maps.google.com/?q=%.6f,%.6f\n\nSent automatically by volume button emergency detection.",
-                    currentLatitude, currentLongitude, currentLatitude, currentLongitude);
-
-            smsManager.sendTextMessage(phoneNumber, null, message, null, null);
-
-            Toast.makeText(this, "🚨 EMERGENCY SMS SENT! 🚨", Toast.LENGTH_LONG).show();
-            tvVolumeResult.setText("✅ Emergency SMS sent to: " + phoneNumber);
-            tvVolumeResult.setTextColor(getColor(android.R.color.holo_green_dark));
-
-        } catch (Exception e) {
-            Toast.makeText(this, "Failed to send emergency SMS: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            tvVolumeResult.setText("❌ Failed to send emergency SMS");
-            tvVolumeResult.setTextColor(getColor(android.R.color.holo_red_dark));
+    
+    private void updateAutoResponseUI() {
+        if (autoResponseEnabled) {
+            btnToggleAutoResponse.setText("💬 Disable SMS Auto-Response");
+            btnToggleAutoResponse.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.danger_red));
+            tvAutoResponseStatus.setText("SMS Auto-Response: ON");
+            tvAutoResponseStatus.setTextColor(getColor(R.color.success_green));
+            tvAutoResponseInfo.setText("✅ Will auto-reply with location when receiving:\n• \"give me your location\"\n• \"send location\"\n• \"where are you\"\n• \"share location\"\n• \"location please\"");
+            tvAutoResponseInfo.setTextColor(getColor(R.color.success_green));
+        } else {
+            btnToggleAutoResponse.setText("💬 Enable SMS Auto-Response");
+            btnToggleAutoResponse.setBackgroundTintList(ContextCompat.getColorStateList(this, R.color.success_green));
+            tvAutoResponseStatus.setText("SMS Auto-Response: OFF");
+            tvAutoResponseStatus.setTextColor(getColor(R.color.text_secondary));
+            tvAutoResponseInfo.setText("");
         }
+    }
+    
+    private boolean checkSmsReceivePermissions() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) 
+                == PackageManager.PERMISSION_GRANTED &&
+               ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) 
+                == PackageManager.PERMISSION_GRANTED &&
+               ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) 
+                == PackageManager.PERMISSION_GRANTED;
+    }
+    
+    private void requestSmsReceivePermissions() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{
+                        Manifest.permission.RECEIVE_SMS,
+                        Manifest.permission.READ_SMS,
+                        Manifest.permission.SEND_SMS
+                },
+                SMS_PERMISSION_REQUEST_CODE);
     }
 
     private void getCurrentLocation() {
@@ -351,7 +240,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        tvLocationStatus.setText("Getting location...");
+        tvLocationStatus.setText("🔄 Getting location...");
+        tvLocationStatus.setTextColor(getColor(R.color.warning_orange));
 
         fusedLocationClient.getLastLocation()
                 .addOnSuccessListener(this, new OnSuccessListener<Location>() {
@@ -371,9 +261,10 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(this, e -> {
                     Toast.makeText(MainActivity.this,
-                            "Failed to get location: " + e.getMessage(),
+                            "❌ Failed to get location: " + e.getMessage(),
                             Toast.LENGTH_LONG).show();
-                    tvLocationStatus.setText("Location: Error occurred");
+                    tvLocationStatus.setText("❌ Location: Error occurred");
+                    tvLocationStatus.setTextColor(getColor(R.color.danger_red));
                     requestFreshLocation();
                 });
     }
@@ -383,15 +274,17 @@ public class MainActivity extends AppCompatActivity {
         currentLongitude = location.getLongitude();
         locationAvailable = true;
 
-        tvLocationStatus.setText("Location: Available");
+        tvLocationStatus.setText("✅ Location: Available");
+        tvLocationStatus.setTextColor(getColor(R.color.success_green));
         tvLocationDetails.setText(String.format(Locale.US,
-                "Lat: %.6f\nLng: %.6f\nAccuracy: %.1fm",
+                "📍 Lat: %.6f\n📍 Lng: %.6f\n🎯 Accuracy: %.1fm",
                 currentLatitude, currentLongitude, location.getAccuracy()));
+        tvLocationDetails.setTextColor(getColor(R.color.text_primary));
 
         btnSendSMS.setEnabled(true);
 
         Toast.makeText(MainActivity.this,
-                "Location obtained successfully!",
+                "🎉 Location obtained successfully!",
                 Toast.LENGTH_SHORT).show();
     }
 
@@ -416,10 +309,12 @@ public class MainActivity extends AppCompatActivity {
                     Location location = locationResult.getLastLocation();
                     updateLocationUI(location);
                 } else {
-                    tvLocationStatus.setText("Location: Not available");
+                    tvLocationStatus.setText("⚠️ Location: Not available");
+                    tvLocationStatus.setTextColor(getColor(R.color.warning_orange));
                     tvLocationDetails.setText("Unable to get current location.\nPlease check GPS settings.");
+                    tvLocationDetails.setTextColor(getColor(R.color.text_secondary));
                     Toast.makeText(MainActivity.this,
-                            "Unable to get location. Make sure GPS is enabled.",
+                            "⚠️ Unable to get location. Make sure GPS is enabled.",
                             Toast.LENGTH_LONG).show();
                 }
             }
@@ -468,10 +363,10 @@ public class MainActivity extends AppCompatActivity {
 
             smsManager.sendTextMessage(phoneNumber, null, message, null, null);
 
-            Toast.makeText(this, "Location SMS sent successfully!", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "✅ Location SMS sent successfully!", Toast.LENGTH_LONG).show();
 
         } catch (Exception e) {
-            Toast.makeText(this, "Failed to send SMS: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "❌ Failed to send SMS: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -495,14 +390,28 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "SMS permission denied", Toast.LENGTH_SHORT).show();
             }
+        } else if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            
+            if (allGranted) {
+                enableAutoResponse();
+                Toast.makeText(this, "SMS permissions granted! Auto-response enabled.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "SMS permissions denied - Auto-response cannot be enabled", Toast.LENGTH_LONG).show();
+                autoResponseEnabled = false;
+                updateAutoResponseUI();
+            }
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (emergencyTimeoutRunnable != null) {
-            emergencyHandler.removeCallbacks(emergencyTimeoutRunnable);
-        }
     }
 }

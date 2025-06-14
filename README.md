@@ -1,33 +1,150 @@
-# Location Sender with Emergency Detection
+# Emergency Location Sender App
 
-An Android application that allows users to share their location via SMS with an innovative emergency detection feature using volume button sequences.
+This Android app can detect your location and send it via SMS to a predefined phone number. It includes an improved emergency detection feature that works even when the screen is off.
 
 ## Features
 
-### 📍 Location Services
-- **Real-time GPS location tracking** using Google Play Services
-- **Automatic location updates** on app startup
-- **High-accuracy positioning** with fallback to network location
-- **Location age verification** to ensure fresh coordinates
-- **Google Maps integration** with clickable links
+### 🔹 Basic Location Sharing
+- Get current GPS location
+- Send location via SMS to any phone number
+- Automatic location updates with high accuracy
 
-### 📱 SMS Integration  
-- **One-tap location sharing** via SMS
-- **Customizable phone numbers** with default emergency contact
-- **Formatted location messages** with coordinates and Google Maps links
-- **Automatic SMS sending** during emergencies
+### 🚨 Emergency Detection (NEW & IMPROVED)
+- **Trigger**: Hold Volume Up + Power button simultaneously for 1 second
+- **Works when screen is OFF** - Critical improvement for emergencies
+- **Background service** - Always listening when emergency mode is enabled
+- **Haptic feedback** - Vibration confirmation when emergency is triggered
+- **Automatic SMS** - Sends location immediately without user interaction
 
-### 🚨 Emergency Volume Button Detection
-- **Innovative emergency trigger** using volume button sequences
-- **Configurable activation** (3 volume button presses by default)
-- **Timeout protection** (3-second window for sequence completion)
-- **Visual and haptic feedback** with vibration alerts
-- **Automatic emergency SMS** with priority location detection
+### 📱 SMS Auto-Response (NEW FEATURE)
+- **Automatic location sharing** when receiving trigger messages
+- **Smart message detection** - Responds to phrases like "give me your location"
+- **Works 24/7** - No need to manually check and respond to messages
+- **Instant response** - Sends location automatically within seconds
+- **Multiple trigger phrases** - "send location", "where are you", etc.
 
-### 🔒 Security & Permissions
-- **Runtime permission handling** for location and SMS
-- **Privacy-conscious design** with user consent
-- **Secure location data** transmission
+## Setup Instructions
+
+### 1. Install and Configure
+1. Install the APK on your Android device
+2. Grant all requested permissions:
+   - Location (Fine & Coarse)
+   - SMS
+   - Notifications
+   - Accessibility Service (for screen-off detection)
+
+### 2. Enable Emergency Mode
+1. Open the app
+2. Enter the emergency contact phone number
+3. Tap "Enable Emergency Mode"
+4. **IMPORTANT**: Enable Accessibility Service when prompted:
+   - Go to Settings > Accessibility
+   - Find "Emergency Detection Service"
+   - Turn it ON
+
+### 3. Enable SMS Auto-Response (Optional)
+1. Tap "Enable SMS Auto-Response" in the app
+2. Grant SMS permissions when prompted:
+   - Receive SMS
+   - Read SMS
+   - Send SMS
+3. The app will now automatically respond to location requests
+
+### 4. Test Emergency Detection
+1. With emergency mode enabled, hold Volume Up + Power button together
+2. Hold for 1 second until you feel vibration
+3. Emergency SMS should be sent automatically
+
+## How Emergency Detection Works
+
+### Technical Implementation
+- **Accessibility Service**: Globally detects key combinations even when screen is off
+- **Background Service**: Handles location retrieval and SMS sending
+- **Wake Locks**: Ensures emergency detection works when device is sleeping
+- **Simultaneous Detection**: Detects Volume Up + Power button pressed within 500ms of each other
+- **Hold Duration**: Requires 1-second hold to prevent accidental triggers
+
+### Emergency Message Format
+```
+🚨 EMERGENCY ALERT 🚨
+I need help! My location:
+Latitude: XX.XXXXXX
+Longitude: XX.XXXXXX
+
+Google Maps: https://maps.google.com/?q=XX.XXXXXX,XX.XXXXXX
+
+Sent automatically by emergency detection.
+```
+
+### SMS Auto-Response Triggers
+The app automatically responds to messages containing:
+- "give me your location"
+- "send location" 
+- "where are you"
+- "share location"
+- "your location"
+- "location please"
+- "send me location"
+
+### Auto-Response Message Format
+```
+📍 My current location:
+Latitude: XX.XXXXXX
+Longitude: XX.XXXXXX
+Accuracy: XX.Xm
+
+🗺️ Google Maps: https://maps.google.com/?q=XX.XXXXXX,XX.XXXXXX
+
+⏰ Sent automatically in response to your request
+```
+
+## Permissions Required
+
+- **Location**: To get GPS coordinates
+- **SMS**: To send emergency messages
+- **Receive SMS**: To detect incoming location requests
+- **Read SMS**: To analyze message content
+- **Wake Lock**: To work when screen is off
+- **Foreground Service**: For background emergency detection
+- **Accessibility Service**: For global key detection
+- **Notifications**: For foreground service notifications
+
+## Important Notes
+
+⚠️ **The accessibility service MUST be enabled for emergency detection to work when the screen is off.**
+
+🔋 **The app uses minimal battery** - emergency detection runs efficiently in the background
+
+📱 **Compatible with Android 8.0+** (API level 26+)
+
+🚨 **This is an emergency safety tool** - test it thoroughly and inform your emergency contacts
+
+## Troubleshooting
+
+### Emergency detection not working?
+1. Check if accessibility service is enabled
+2. Ensure emergency mode is ON in the app
+3. Try holding both buttons firmly for a full second
+4. Check if the app has all required permissions
+
+### SMS not sending?
+1. Verify SMS permission is granted
+2. Check if the phone number is correct (include country code)
+3. Ensure you have network connectivity
+4. Some carriers may block automated SMS
+
+### Location not accurate?
+1. Ensure GPS is enabled in device settings
+2. Grant precise location permission
+3. Test outdoors for better GPS signal
+4. Make sure location services are enabled for the app
+
+## Privacy & Security
+
+- No data is stored or transmitted except the emergency SMS
+- Location data is only accessed when needed
+- No internet connection required (except for Google Maps link)
+- All processing happens locally on your device
 
 ## Screenshots
 
